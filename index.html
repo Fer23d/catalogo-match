@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="Preenchimento automático da coluna Observações com códigos de cinco catálogos técnicos."
+  >
+  <title>Catálogo Match | Cruzamento de Produtos</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="xlsx.full.min.js" defer></script>
+  <script src="jszip.min.js" defer></script>
+  <script src="catalogo-data.js" defer></script>
+  <script src="catalogo-daisa-data.js" defer></script>
+  <script src="catalogo-elecon-data.js" defer></script>
+  <script src="catalogo-arcelor-data.js" defer></script>
+  <script src="catalogo-burndy-data.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="container header-inner">
+      <a class="brand" href="#" aria-label="Catálogo Match">
+        <span class="brand-mark">CM</span>
+        <span>
+          <strong>CATÁLOGO MATCH</strong>
+          <small>Engenharia de especificações</small>
+        </span>
+      </a>
+      <div class="database-status">
+        <span class="status-dot"></span>
+        <span id="database-summary">Carregando base local...</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">Ciser + DAISA + Elecon + ArcelorMittal + BURNDY</span>
+          <h1>Preencha “Observações” com o código correto.</h1>
+          <p>
+            Importe a planilha de engenharia e cruze descrição, linha, dimensão,
+            material, acabamento e rosca com as bases técnicas dos catálogos.
+          </p>
+        </div>
+        <div class="hero-stats" aria-label="Resumo da base">
+          <div><strong id="stat-products">0</strong><span>fichas técnicas</span></div>
+          <div><strong id="stat-variants">0</strong><span>combinações de TAG</span></div>
+          <div><strong id="stat-categories">0</strong><span>categorias</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="container workspace">
+      <nav class="tabs" aria-label="Áreas do aplicativo">
+        <button class="tab active" type="button" data-tab="crossing">Cruzamento Excel</button>
+        <button class="tab" type="button" data-tab="manual">Busca manual</button>
+        <div class="catalog-links">
+          <a href="catalogo-geral-ciser-2026.pdf" target="_blank" rel="noopener">
+            PDF Ciser <span>↗</span>
+          </a>
+          <a href="catalogo-DAISA.pdf" target="_blank" rel="noopener">
+            PDF DAISA <span>↗</span>
+          </a>
+          <a href="catalogo-elecon.pdf" target="_blank" rel="noopener">
+            PDF Elecon <span>↗</span>
+          </a>
+          <a href="catalogo-arcelor.pdf" target="_blank" rel="noopener">
+            PDF Arcelor <span>↗</span>
+          </a>
+          <a href="catalogo-burndy.pdf" target="_blank" rel="noopener">
+            PDF BURNDY <span>↗</span>
+          </a>
+        </div>
+      </nav>
+
+      <section class="tab-panel active" id="crossing-panel">
+        <div class="steps" aria-label="Etapas">
+          <div class="step active" data-step="1"><span>1</span><p>Importar<small>Arquivo Excel</small></p></div>
+          <div class="step" data-step="2"><span>2</span><p>Mapear<small>Colunas da planilha</small></p></div>
+          <div class="step" data-step="3"><span>3</span><p>Revisar<small>Resultados e TAGs</small></p></div>
+        </div>
+
+        <section class="card stage active" id="import-stage">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Etapa 1</span>
+              <h2>Importe a planilha de produtos</h2>
+            <p>Formato compatível: XLSX, preservando o arquivo original como template.</p>
+            </div>
+          </div>
+
+          <label class="drop-zone" id="drop-zone" for="excel-file">
+            <input
+              id="excel-file"
+              type="file"
+              accept=".xlsx"
+            >
+            <span class="upload-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v5h14v-5"/>
+              </svg>
+            </span>
+            <strong>Arraste o arquivo aqui ou clique para selecionar</strong>
+            <small>O processamento acontece localmente no navegador.</small>
+          </label>
+
+          <div class="file-summary" id="file-summary" hidden>
+            <div class="file-icon">XLS</div>
+            <div>
+              <strong id="file-name"></strong>
+              <span id="file-details"></span>
+            </div>
+            <label>
+              Aba
+              <select id="sheet-select"></select>
+            </label>
+            <button class="button button-primary" id="continue-mapping" type="button">
+              Continuar
+            </button>
+          </div>
+        </section>
+
+        <section class="card stage" id="mapping-stage">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Etapa 2</span>
+              <h2>Mapeie as colunas</h2>
+              <p>
+                Confirme as informações de busca e indique a coluna “Observações”,
+                que receberá somente o código final.
+              </p>
+            </div>
+            <button class="text-button" id="back-import" type="button">← Trocar arquivo</button>
+          </div>
+
+          <div class="mapping-grid" id="mapping-grid"></div>
+
+          <div class="preview-block">
+            <div class="preview-heading">
+              <h3>Prévia da planilha</h3>
+              <span id="row-count"></span>
+            </div>
+            <div class="table-scroll compact">
+              <table id="preview-table"></table>
+            </div>
+          </div>
+
+          <div class="stage-actions">
+            <p>
+              <strong>Confiança:</strong> linha 30 pontos, tipo 25, dimensão 20,
+              acabamento 15 e material ou rosca 10.
+            </p>
+            <button class="button button-primary" id="run-crossing" type="button">
+              Cruzar produtos
+            </button>
+          </div>
+        </section>
+
+        <section class="stage" id="results-stage">
+          <div class="results-toolbar">
+            <div>
+              <span class="section-kicker">Etapa 3</span>
+              <h2>Resultado do cruzamento</h2>
+            </div>
+            <div class="toolbar-actions">
+              <button class="button button-secondary" id="new-import" type="button">
+                Nova importação
+              </button>
+              <button class="button button-primary" id="export-results" type="button">
+                Exportar planilha preenchida
+              </button>
+            </div>
+          </div>
+
+          <div class="result-stats">
+            <div><span>Linhas analisadas</span><strong id="total-result">0</strong></div>
+            <div class="success"><span>Encontrados</span><strong id="found-result">0</strong></div>
+            <div class="warning"><span>Revisar</span><strong id="review-result">0</strong></div>
+            <div class="danger"><span>Não encontrados</span><strong id="not-found-result">0</strong></div>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path>
+              </svg>
+              <input id="result-filter" type="search" placeholder="Filtrar resultados...">
+            </div>
+            <select id="status-filter" aria-label="Filtrar por status">
+              <option value="">Todos os status</option>
+              <option value="Encontrado">Encontrados</option>
+              <option value="Revisar">Revisar</option>
+              <option value="Não encontrado">Não encontrados</option>
+            </select>
+          </div>
+
+          <div class="table-scroll results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Dados da planilha</th>
+                  <th>Produto no catálogo</th>
+                  <th>Marca / família</th>
+                  <th>Dimensão</th>
+                  <th>Referência / detalhe</th>
+                  <th>Acabamento / sistema</th>
+                  <th>Observações / código final</th>
+                  <th>Página</th>
+                  <th>Confiança</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pagination"></div>
+        </section>
+      </section>
+
+      <section class="tab-panel" id="manual-panel">
+        <section class="card manual-card">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Consulta direta</span>
+              <h2>Busca manual no catálogo</h2>
+              <p>Pesquise por descrição, dimensão, acabamento, rosca, linha ou TAG.</p>
+            </div>
+          </div>
+
+          <form class="manual-search" id="manual-form">
+            <div>
+              <label for="manual-description">Descrição ou código</label>
+              <input
+                id="manual-description"
+                type="search"
+                placeholder="Ex.: paraf. auto atarraxante Phillips"
+              >
+            </div>
+            <div>
+              <label for="manual-dimension">Dimensão / tamanho</label>
+              <input id="manual-dimension" type="text" placeholder="Ex.: 4,8 x 13 mm">
+            </div>
+            <div>
+              <label for="manual-finish">Acabamento</label>
+              <input id="manual-finish" type="text" placeholder="Ex.: Zincado branco">
+            </div>
+            <button class="button button-primary" type="submit">Buscar</button>
+          </form>
+
+          <fieldset class="manufacturer-filter">
+            <legend>Fabricantes pesquisados</legend>
+            <label><input type="checkbox" name="manual-manufacturer" value="CISER" checked> CISER</label>
+            <label><input type="checkbox" name="manual-manufacturer" value="ELECON" checked> ELECON</label>
+            <label><input type="checkbox" name="manual-manufacturer" value="DAISA" checked> DAISA</label>
+            <label><input type="checkbox" name="manual-manufacturer" value="ARCELOR" checked> ARCELOR</label>
+            <label><input type="checkbox" name="manual-manufacturer" value="BURNDY" checked> BURNDY</label>
+          </fieldset>
+
+          <div class="manual-feedback" id="manual-feedback">
+            Informe os dados acima para pesquisar nas cinco bases técnicas.
+          </div>
+          <div class="manual-results" id="manual-results"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p><strong>CATÁLOGO MATCH</strong> · Consulta local sem envio de dados.</p>
+      <p>Bases extraídas dos catálogos Ciser, DAISA, Elecon, ArcelorMittal e BURNDY.</p>
+    </div>
+  </footer>
+</body>
+</html>
