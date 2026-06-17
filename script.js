@@ -86,6 +86,9 @@ const FINISH_WORDS = new Set([
   "polido", "pvc", "zamak", "fogo", "pre", "natural", "pintado"
 ]);
 
+const FAVORITES_STORAGE_KEY = "catalogo-match-favorites-v1";
+const MAX_SUGGESTIONS = 8;
+
 const elements = {
   summary: document.querySelector("#database-summary"),
   products: document.querySelector("#stat-products"),
@@ -98,6 +101,10 @@ const elements = {
   clear: document.querySelector("#clear-search"),
   feedback: document.querySelector("#manual-feedback"),
   results: document.querySelector("#manual-results"),
+  suggestions: document.querySelector("#autocomplete-suggestions"),
+  showResults: document.querySelector("#show-results"),
+  showFavorites: document.querySelector("#show-favorites"),
+  favoriteCount: document.querySelector("#favorite-count"),
   examples: document.querySelectorAll(".example-searches [data-query]")
 };
 
@@ -115,6 +122,16 @@ function normalizar(texto) {
 
 function normalizeCode(value) {
   return normalizar(value).replace(/[^a-z0-9]/g, "");
+}
+
+function entryKey(entry) {
+  return [
+    entry.fabricante,
+    normalizeCode(entry.codigoFinal),
+    normalizeCode(entry.produto),
+    normalizeCode(entry.dimensao),
+    normalizeCode(entry.acabamento)
+  ].join("|");
 }
 
 function escapeHtml(value) {
@@ -284,6 +301,7 @@ function buildSearchIndex() {
       CATALOGS[fabricante].forEach((product) => {
         (product.variantes || []).forEach((variant) => {
           const entry = normalizeCatalogProduct(product, variant, fabricante);
+          entry.key = entryKey(entry);
           const key = [
             entry.fabricante,
             entry.codigoNormalizado,
@@ -303,6 +321,38 @@ function buildSearchIndex() {
 }
 
 const SEARCH_INDEX = buildSearchIndex();
+const ENTRY_BY_KEY = new Map(
+  Object.values(SEARCH_INDEX)
+    .flat()
+    .map((entry) => [entry.key, entry])
+);
+
+let currentGroupedResults = {};
+let activeView = "results";
+let favorites = loadFavorites();
+
+function loadFavorites() {
+  try {
+    if (typeof localStorage === "undefined") return [];
+    const stored = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
+    return Array.isArray(stored) ? stored.filter((key) => ENTRY_BY_KEY.has(key)) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveFavorites() {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+}
+
+function isFavorite(key) {
+  return favorites.includes(key);
+}
+
+function updateFavoriteCount() {
+  elements.favoriteCount.textContent = formatNumber(favorites.length);
+}
 
 function buildQuery() {
   return {
@@ -409,13 +459,79 @@ function searchCatalogs(query, options = {}) {
   return grouped;
 }
 
+function suggestionLabel(entry) {
+  return unique([
+    entry.produto,
+    entry.dimensao,
+    entry.acabamento
+  ]).join(" ");
+}
+
+function autocompleteSuggestions(value) {
+  const queryText = normalizar(value);
+  if (queryText.length < 2) return [];
+  const grouped = searchCatalogs({
+    text: value,
+    dimension: "",
+    finish: "",
+    combined: value
+  }, {
+    manufacturers: selectedManufacturers(),
+    limitPerManufacturer: 4
+  });
+
+  const seen = new Set();
+  return Object.values(grouped)
+    .flat()
+    .sort((left, right) => right.score - left.score)
+    .map((entry) => ({
+      label: suggestionLabel(entry),
+      fabricante: entry.fabricante,
+      codigoFinal: entry.codigoFinal,
+      score: entry.score
+    }))
+    .filter((item) => {
+      const key = normalizar(`${item.label} ${item.fabricante}`);
+      if (!item.label || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, MAX_SUGGESTIONS);
+}
+
+function hideSuggestions() {
+  elements.suggestions.hidden = true;
+  elements.suggestions.innerHTML = "";
+}
+
+function renderSuggestions() {
+  const suggestions = autocompleteSuggestions(elements.description.value);
+  if (!suggestions.length) {
+    hideSuggestions();
+    return;
+  }
+
+  elements.suggestions.hidden = false;
+  elements.suggestions.innerHTML = suggestions.map((suggestion) => `
+    <button
+      class="autocomplete-option"
+      type="button"
+      role="option"
+      data-query="${escapeHtml(suggestion.label)}"
+    >
+      <strong>${escapeHtml(suggestion.label)}</strong>
+      <span>${escapeHtml(suggestion.fabricante)}${suggestion.codigoFinal ? ` · ${escapeHtml(suggestion.codigoFinal)}` : ""} · ${suggestion.score}%</span>
+    </button>
+  `).join("");
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
 function confidenceClass(score) {
-  if (score >= 75) return "high";
-  if (score >= 45) return "medium";
+  if (score >= 80) return "high";
+  if (score >= 50) return "medium";
   return "low";
 }
 
@@ -448,16 +564,71 @@ function openCatalogFromButton(button) {
   }
 }
 
+function rerenderActiveView() {
+  updateFavoriteCount();
+  if (activeView === "favorites") {
+    renderFavorites();
+    return;
+  }
+  if (Object.keys(currentGroupedResults).length) renderGroupedResults(currentGroupedResults);
+}
+
+function toggleFavorite(key) {
+  if (!ENTRY_BY_KEY.has(key)) return;
+  if (isFavorite(key)) {
+    favorites = favorites.filter((favoriteKey) => favoriteKey !== key);
+    elements.feedback.textContent = "Produto removido dos favoritos.";
+  } else {
+    favorites = [key, ...favorites];
+    elements.feedback.textContent = "Produto adicionado aos favoritos.";
+  }
+  saveFavorites();
+  rerenderActiveView();
+}
+
+async function copyCode(code) {
+  if (!code) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(code);
+    } else {
+      const temporary = document.createElement("textarea");
+      temporary.value = code;
+      temporary.setAttribute("readonly", "");
+      temporary.style.position = "fixed";
+      temporary.style.opacity = "0";
+      document.body.appendChild(temporary);
+      temporary.select();
+      document.execCommand("copy");
+      temporary.remove();
+    }
+    elements.feedback.textContent = "Código copiado!";
+  } catch (error) {
+    elements.feedback.textContent = `Não foi possível copiar automaticamente. Código: ${code}`;
+  }
+}
+
 function renderResultCard(result) {
   const canOpenCatalog = Boolean(result.pdfUrl);
+  const favorite = isFavorite(result.key);
+  const code = result.codigoFinal || "";
   return `
-    <article class="manual-result-card">
+    <article class="manual-result-card" data-entry-key="${escapeHtml(result.key)}">
       <div class="result-card-heading">
         <div>
           <strong>${escapeHtml(result.produto || "Produto sem título")}</strong>
           <span>${escapeHtml(result.fabricante)} · Página ${escapeHtml(result.pagina || "—")}</span>
         </div>
-        <span class="confidence ${confidenceClass(result.score)}">${result.score} pontos</span>
+        <div class="card-top-actions">
+          <button
+            class="favorite-button ${favorite ? "active" : ""}"
+            type="button"
+            data-entry-key="${escapeHtml(result.key)}"
+            aria-label="${favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}"
+            title="${favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}"
+          >${favorite ? "★" : "☆"}</button>
+          <span class="confidence ${confidenceClass(result.score)}">${result.score}%</span>
+        </div>
       </div>
       <dl>
         <div><dt>Fabricante</dt><dd>${escapeHtml(result.fabricante)}</dd></div>
@@ -472,8 +643,16 @@ function renderResultCard(result) {
         linha ${result.breakdown.linha} · acabamento ${result.breakdown.acabamento} ·
         código ${result.breakdown.codigo}
       </p>
-      ${canOpenCatalog
-        ? `<button
+      <div class="result-actions">
+        ${code
+          ? `<button
+              class="copy-code-button"
+              type="button"
+              data-code="${escapeHtml(code)}"
+            >Copiar código</button>`
+          : ""}
+        ${canOpenCatalog
+          ? `<button
             class="catalog-open-button"
             type="button"
             data-fabricante="${escapeHtml(result.fabricante)}"
@@ -483,16 +662,46 @@ function renderResultCard(result) {
             data-pagina-pdf="${escapeHtml(result.paginaPdf)}"
             data-pdf-url="${escapeHtml(result.pdfUrl)}"
           >Abrir no catálogo</button>`
-        : ""}
+          : ""}
+      </div>
     </article>
   `;
 }
 
-function renderGroupedResults(grouped) {
+function groupEntriesByManufacturer(entries) {
+  const grouped = Object.fromEntries(MANUFACTURERS.map((fabricante) => [fabricante, []]));
+  entries.forEach((entry) => {
+    if (!grouped[entry.fabricante]) grouped[entry.fabricante] = [];
+    grouped[entry.fabricante].push(entry);
+  });
+  return grouped;
+}
+
+function favoriteResult(entry) {
+  return {
+    ...entry,
+    score: 100,
+    breakdown: {
+      produto: 40,
+      dimensao: 25,
+      linha: 20,
+      acabamento: 15,
+      codigo: 0
+    }
+  };
+}
+
+function renderGroupedResults(grouped, options = {}) {
   const total = Object.values(grouped).flat().length;
-  elements.feedback.textContent = total
-    ? `${total} resultados encontrados, separados por fabricante e ordenados por relevância.`
-    : "Nenhum resultado encontrado. Tente informar outro termo, dimensão, linha ou código parcial.";
+  if (options.mode === "favorites") {
+    elements.feedback.textContent = total
+      ? `${total} favoritos salvos, separados por fabricante.`
+      : "Nenhum favorito salvo ainda. Use a estrela em um resultado para salvar produtos aqui.";
+  } else {
+    elements.feedback.textContent = total
+      ? `${total} resultados encontrados, separados por fabricante e ordenados por relevância.`
+      : "Nenhum resultado encontrado. Tente informar outro termo, dimensão, linha ou código parcial.";
+  }
 
   elements.results.innerHTML = Object.keys(grouped).map((fabricante) => {
     const results = grouped[fabricante] || [];
@@ -510,6 +719,30 @@ function renderGroupedResults(grouped) {
   }).join("");
 }
 
+function renderFavorites() {
+  const favoriteEntries = favorites
+    .map((key) => ENTRY_BY_KEY.get(key))
+    .filter(Boolean)
+    .map(favoriteResult);
+  renderGroupedResults(groupEntriesByManufacturer(favoriteEntries), { mode: "favorites" });
+}
+
+function setActiveView(view) {
+  activeView = view;
+  elements.showResults.classList.toggle("active", view === "results");
+  elements.showFavorites.classList.toggle("active", view === "favorites");
+  if (view === "favorites") {
+    renderFavorites();
+    return;
+  }
+  if (Object.keys(currentGroupedResults).length) {
+    renderGroupedResults(currentGroupedResults);
+    return;
+  }
+  elements.feedback.textContent = "Informe uma busca para consultar todos os catálogos.";
+  elements.results.innerHTML = "";
+}
+
 function selectedManufacturers() {
   return [...document.querySelectorAll('input[name="manual-manufacturer"]:checked')]
     .map((input) => input.value);
@@ -518,6 +751,10 @@ function selectedManufacturers() {
 function runManualSearch() {
   const query = buildQuery();
   if (!normalizar(query.combined)) {
+    currentGroupedResults = {};
+    activeView = "results";
+    elements.showResults.classList.add("active");
+    elements.showFavorites.classList.remove("active");
     elements.feedback.textContent = "Informe uma busca para consultar todos os catálogos.";
     elements.results.innerHTML = "";
     return;
@@ -526,7 +763,8 @@ function runManualSearch() {
     manufacturers: selectedManufacturers(),
     limitPerManufacturer: 10
   });
-  renderGroupedResults(grouped);
+  currentGroupedResults = grouped;
+  setActiveView("results");
 }
 
 function initializeSummary() {
@@ -549,13 +787,34 @@ elements.clear.addEventListener("click", () => {
   elements.description.value = "";
   elements.dimension.value = "";
   elements.finish.value = "";
+  currentGroupedResults = {};
+  setActiveView("results");
   elements.results.innerHTML = "";
   elements.feedback.textContent = "Informe uma busca para consultar todos os catálogos.";
+  hideSuggestions();
   elements.description.focus();
 });
 
+elements.description.addEventListener("input", renderSuggestions);
+elements.description.addEventListener("focus", renderSuggestions);
+elements.description.addEventListener("blur", () => {
+  window.setTimeout(hideSuggestions, 140);
+});
+
+elements.suggestions.addEventListener("mousedown", (event) => {
+  const option = event.target.closest(".autocomplete-option");
+  if (!option) return;
+  elements.description.value = option.dataset.query;
+  hideSuggestions();
+  runManualSearch();
+});
+
+elements.showResults.addEventListener("click", () => setActiveView("results"));
+elements.showFavorites.addEventListener("click", () => setActiveView("favorites"));
+
 document.querySelectorAll('input[name="manual-manufacturer"]').forEach((input) => {
   input.addEventListener("change", () => {
+    renderSuggestions();
     if (normalizar(buildQuery().combined)) runManualSearch();
   });
 });
@@ -565,13 +824,27 @@ elements.examples.forEach((button) => {
     elements.description.value = button.dataset.query;
     elements.dimension.value = "";
     elements.finish.value = "";
+    hideSuggestions();
     runManualSearch();
   });
 });
 
-elements.results.addEventListener("click", (event) => {
+elements.results.addEventListener("click", async (event) => {
   const button = event.target.closest(".catalog-open-button");
-  if (button) openCatalogFromButton(button);
+  if (button) {
+    openCatalogFromButton(button);
+    return;
+  }
+
+  const copyButton = event.target.closest(".copy-code-button");
+  if (copyButton) {
+    await copyCode(copyButton.dataset.code || "");
+    return;
+  }
+
+  const favoriteButton = event.target.closest(".favorite-button");
+  if (favoriteButton) toggleFavorite(favoriteButton.dataset.entryKey || "");
 });
 
 initializeSummary();
+updateFavoriteCount();

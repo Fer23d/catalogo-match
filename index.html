@@ -101,8 +101,17 @@
               id="manual-description"
               type="search"
               autocomplete="off"
+              aria-autocomplete="list"
+              aria-controls="autocomplete-suggestions"
               placeholder="Ex.: parafuso sextavado inox 304, condulete 3/4 alumínio, bolt hex stainless"
             >
+            <div
+              class="autocomplete-suggestions"
+              id="autocomplete-suggestions"
+              role="listbox"
+              aria-label="Sugestões de produtos"
+              hidden
+            ></div>
           </div>
           <div>
             <label for="manual-dimension">Dimensão / rosca</label>
@@ -138,6 +147,13 @@
         <div class="ranking-note">
           <strong>Ranking:</strong> produto 40 pontos, dimensão 25, linha 20,
           acabamento 15 e código parcial 10.
+        </div>
+
+        <div class="result-view-tabs" aria-label="Alternar visualização">
+          <button class="result-view-tab active" id="show-results" type="button">Resultados</button>
+          <button class="result-view-tab" id="show-favorites" type="button">
+            Favoritos <span id="favorite-count">0</span>
+          </button>
         </div>
 
         <div class="manual-feedback" id="manual-feedback">

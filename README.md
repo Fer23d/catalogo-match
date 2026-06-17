@@ -10,10 +10,11 @@ catalogo.
 1. Abra `index.html` em um navegador moderno ou acesse o GitHub Pages.
 2. Digite o produto, descricao tecnica, dimensao, rosca, acabamento, linha ou
    codigo parcial.
-3. Opcionalmente filtre os fabricantes.
-4. Clique em **Buscar**.
-5. Revise os resultados agrupados por fabricante e ordenados por score.
-6. Use **Abrir no catalogo** para abrir o PDF oficial na pagina do item.
+3. Use as sugestoes automaticas para completar a busca, se desejar.
+4. Opcionalmente filtre os fabricantes.
+5. Clique em **Buscar**.
+6. Revise os resultados agrupados por fabricante e ordenados por score.
+7. Use **Copiar codigo**, **Abrir no catalogo** ou a estrela de favoritos.
 
 Exemplos de busca:
 
@@ -86,8 +87,19 @@ Cada card de resultado mostra:
 - codigo final;
 - pagina do catalogo;
 - score de confianca;
-- composicao do score.
+- composicao do score;
+- botao para copiar o codigo final;
+- estrela para salvar/remover favorito;
 - botao para abrir o PDF do fabricante diretamente na pagina do produto.
+
+## Recursos profissionais
+
+- autocomplete inteligente com sugestoes vindas dos catalogos carregados;
+- busca fuzzy para erros de digitacao, abreviacoes e termos incompletos;
+- filtros visuais por fabricante;
+- score colorido: alta, media e baixa confianca;
+- favoritos persistentes em `localStorage`;
+- copia rapida do codigo final com um clique.
 
 ## Abertura do catalogo
 
