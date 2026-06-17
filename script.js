@@ -1,4 +1,4 @@
-/* global XLSX, JSZip, CATALOGO_PRODUTOS, CATALOGO_DAISA_PRODUTOS, CATALOGO_ELECON_PRODUTOS, CATALOGO_ARCELOR_PRODUTOS, CATALOGO_BURNDY_PRODUTOS */
+/* global XLSX, JSZip, CATALOGO_PRODUTOS, CATALOGO_DAISA_PRODUTOS, CATALOGO_ELECON_PRODUTOS, CATALOGO_ARCELOR_PRODUTOS, CATALOGO_BURNDY_PRODUTOS, CATALOGO_INTELLI_PRODUTOS, CATALOGO_SUBESTACOES_PRODUTOS */
 
 const FIELD_DEFINITIONS = [
   {
@@ -175,13 +175,23 @@ const BURNDY_PRODUCTS =
   typeof CATALOGO_BURNDY_PRODUTOS !== "undefined"
     ? CATALOGO_BURNDY_PRODUTOS
     : [];
+const INTELLI_PRODUCTS =
+  typeof CATALOGO_INTELLI_PRODUTOS !== "undefined"
+    ? CATALOGO_INTELLI_PRODUTOS
+    : [];
+const SUBESTACOES_PRODUCTS =
+  typeof CATALOGO_SUBESTACOES_PRODUTOS !== "undefined"
+    ? CATALOGO_SUBESTACOES_PRODUTOS
+    : [];
 
 const catalogos = {
   CISER: CATALOGO_PRODUTOS,
   ELECON: ELECON_PRODUCTS,
   DAISA: DAISA_PRODUCTS,
   ARCELOR: ARCELOR_PRODUCTS,
-  BURNDY: BURNDY_PRODUCTS
+  BURNDY: BURNDY_PRODUCTS,
+  INTELLI: INTELLI_PRODUCTS,
+  SUBESTACOES: SUBESTACOES_PRODUCTS
 };
 const MANUFACTURER_ORDER = Object.keys(catalogos);
 
@@ -586,6 +596,11 @@ const arcelorCatalogVariants = adaptExternalCatalog(
   "ARCELORMITTAL"
 );
 const burndyCatalogVariants = adaptExternalCatalog(BURNDY_PRODUCTS, "BURNDY");
+const intelliCatalogVariants = adaptExternalCatalog(INTELLI_PRODUCTS, "INTELLI");
+const subestacoesCatalogVariants = adaptExternalCatalog(
+  SUBESTACOES_PRODUCTS,
+  "SUBESTACOES"
+);
 
 const DAISA_SIZE_RULES = [
   { code: "110", patterns: [/\b1\s+1\/4\b/, /\b32\s*mm\b/] },
@@ -630,7 +645,9 @@ function daisaProductScore(query, entry) {
   if (
     normalized.includes("elecon") ||
     normalized.includes("arcelor") ||
-    normalized.includes("burndy")
+    normalized.includes("burndy") ||
+    normalized.includes("intelli") ||
+    normalized.includes("subestacoes")
   ) {
     return 0;
   }
@@ -871,7 +888,9 @@ function eleconProductScore(query, entry) {
     normalized.includes("daisa") ||
     normalized.includes("ciser") ||
     normalized.includes("arcelor") ||
-    normalized.includes("burndy")
+    normalized.includes("burndy") ||
+    normalized.includes("intelli") ||
+    normalized.includes("subestacoes")
   ) {
     return 0;
   }
@@ -1332,6 +1351,120 @@ function searchBurndyCatalog(query, limit = 1, options = {}) {
   return { matches, diagnostic };
 }
 
+function genericExternalProductScore(query, entry, fabricante) {
+  const normalized = normalizeText(query);
+  const blockedManufacturers = MANUFACTURER_ORDER
+    .filter((name) => name !== fabricante)
+    .flatMap((name) => name === "ARCELOR" ? [name, "arcelormittal"] : [name]);
+  if (blockedManufacturers.some((name) => normalized.includes(normalizeText(name)))) {
+    return 0;
+  }
+  const candidateText = normalizeText(
+    `${entry.product.nome} ${entry.product.categoria} ${entry.variant.codigo} ` +
+    `${entry.variant.familia} ${entry.variant.dimensao} ${entry.variant.detalhe} ` +
+    `${entry.variant.sistema}`
+  );
+  let score = Math.round(60 * tokenCoverage(query, tokenize(candidateText)));
+  const normalizedCode = normalizeCatalogCode(entry.variant.codigo);
+  extractCodeFragments(query).forEach((fragment) => {
+    if (fragment.length >= 3 && normalizedCode === fragment) score += 45;
+    else if (fragment.length >= 3 && normalizedCode.includes(fragment)) score += 25;
+  });
+  if (normalized.includes(normalizeText(fabricante))) score += 15;
+  return Math.min(100, score);
+}
+
+function searchGenericExternalCatalog(query, entries, fabricante, limit = 1, options = {}) {
+  const strict = options.strict !== false;
+  const descriptionQuery =
+    `${query.descricao} ${query.especificacao} ${query.codigoFabricante}`.trim();
+  const dimensionQuery =
+    [query.dimensao, query.tamanho].filter(Boolean).join(" ") || descriptionQuery;
+  const requestedNumbers = extractNumericTokens(dimensionQuery);
+  const exactCode = normalizeCatalogCode(query.codigoFabricante);
+  const exactEntry = exactCode && entries.find((entry) =>
+    normalizeCatalogCode(entry.variant.codigo) === exactCode);
+  const diagnostic = {
+    item: query.item || query.codigoFabricante || "",
+    descricaoOriginal: String(query.descricao || ""),
+    linhaExtraida: "",
+    produtosCandidatos: [],
+    produtoEscolhido: "",
+    dimensaoDetectada: dimensionQuery,
+    acabamentoDetectado: query.acabamento || "",
+    referenciaEncontrada: "",
+    codigoFinal: "",
+    motivoFalha: "",
+    catalogo: fabricante
+  };
+
+  if (exactEntry) {
+    diagnostic.linhaExtraida = exactEntry.variant.familia;
+    diagnostic.produtoEscolhido = exactEntry.product.nome;
+    diagnostic.referenciaEncontrada = exactEntry.variant.familia;
+    diagnostic.codigoFinal = exactEntry.variant.codigo;
+    return {
+      matches: [{
+        ...exactEntry,
+        score: 100,
+        breakdown: {
+          produto: 30,
+          dimensao: 25,
+          linha: 20,
+          acabamento: 15,
+          referencia: 10
+        }
+      }],
+      diagnostic
+    };
+  }
+
+  let candidates = entries
+    .map((entry) => ({
+      ...entry,
+      productScore: genericExternalProductScore(descriptionQuery, entry, fabricante)
+    }))
+    .filter((entry) => entry.productScore >= (strict ? 30 : 10));
+
+  diagnostic.produtosCandidatos = [
+    ...new Set(candidates.map((entry) => entry.product.nome))
+  ].slice(0, 10);
+
+  if (requestedNumbers.length) {
+    const dimensionMatches = candidates.filter((entry) =>
+      extractNumericTokens(`${entry.variant.dimensao} ${entry.variant.detalhe}`)
+        .some((number) => requestedNumbers.includes(number)));
+    if (dimensionMatches.length) {
+      candidates = dimensionMatches;
+    }
+  }
+
+  const matches = candidates
+    .map((entry) => {
+      const score = scoreManualCatalogResult(fabricante, query, entry);
+      return {
+        ...entry,
+        score: Math.max(entry.productScore, score.score),
+        breakdown: score.breakdown
+      };
+    })
+    .filter((entry) => entry.score >= (strict ? 35 : 12))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  const chosen = matches[0];
+  if (chosen) {
+    diagnostic.linhaExtraida = chosen.variant.familia;
+    diagnostic.produtoEscolhido = chosen.product.nome;
+    diagnostic.referenciaEncontrada = chosen.variant.familia;
+    diagnostic.codigoFinal = chosen.variant.codigo;
+  } else {
+    diagnostic.motivoFalha = `Código ${fabricante} não encontrado`;
+  }
+
+  return { matches, diagnostic };
+}
+
 function getCatalogRegistry() {
   return {
     CISER: {
@@ -1369,6 +1502,26 @@ function getCatalogRegistry() {
         strict: false,
         debug: false
       })
+    },
+    INTELLI: {
+      entries: intelliCatalogVariants,
+      search: (query, limit) => searchGenericExternalCatalog(
+        query,
+        intelliCatalogVariants,
+        "INTELLI",
+        limit,
+        { strict: false, debug: false }
+      )
+    },
+    SUBESTACOES: {
+      entries: subestacoesCatalogVariants,
+      search: (query, limit) => searchGenericExternalCatalog(
+        query,
+        subestacoesCatalogVariants,
+        "SUBESTACOES",
+        limit,
+        { strict: false, debug: false }
+      )
     }
   };
 }
@@ -1415,6 +1568,14 @@ function manualDimensionMatches(fabricante, query, entry) {
       entry,
       dimensionQuery
     );
+  }
+  if (fabricante === "INTELLI" || fabricante === "SUBESTACOES") {
+    const candidateNumbers = extractNumericTokens(
+      `${entry.variant.dimensao} ${entry.variant.detalhe}`
+    );
+    const requestedNumbers = extractNumericTokens(dimensionQuery);
+    return requestedNumbers.length > 0 &&
+      requestedNumbers.some((number) => candidateNumbers.includes(number));
   }
   return false;
 }
@@ -1569,7 +1730,10 @@ function searchMultiCatalog(query, options = {}) {
       const descriptionTokens = tokenize(
         `${query.descricao} ${query.especificacao}`
       ).filter((token) =>
-        !["ciser", "elecon", "daisa", "arcelor", "arcelormittal", "burndy"]
+        ![
+          "ciser", "elecon", "daisa", "arcelor", "arcelormittal",
+          "burndy", "intelli", "subestacoes"
+        ]
           .includes(token));
       const hasIdentityMatch =
         scored.breakdown.produto > 0 ||
@@ -1891,12 +2055,36 @@ function searchAllCatalogs(query, limit = 1, options = {}) {
         }
       }
     : searchBurndyCatalog(query, limit, options);
+  const intelli = hasExplicitCiserLine
+    ? {
+        matches: [],
+        diagnostic: {
+          motivoFalha: "Busca INTELLI ignorada porque há linha Ciser explícita"
+        }
+      }
+    : searchGenericExternalCatalog(query, intelliCatalogVariants, "INTELLI", limit, options);
+  const subestacoes = hasExplicitCiserLine
+    ? {
+        matches: [],
+        diagnostic: {
+          motivoFalha: "Busca SUBESTACOES ignorada porque há linha Ciser explícita"
+        }
+      }
+    : searchGenericExternalCatalog(
+        query,
+        subestacoesCatalogVariants,
+        "SUBESTACOES",
+        limit,
+        options
+      );
   const matches = [
     ...ciser.matches,
     ...daisa.matches,
     ...elecon.matches,
     ...arcelor.matches,
-    ...burndy.matches
+    ...burndy.matches,
+    ...intelli.matches,
+    ...subestacoes.matches
   ]
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
@@ -1911,13 +2099,18 @@ function searchAllCatalogs(query, limit = 1, options = {}) {
       ? arcelor.diagnostic
     : chosen?.marca === "BURNDY"
       ? burndy.diagnostic
+    : chosen?.marca === "INTELLI"
+      ? intelli.diagnostic
+    : chosen?.marca === "SUBESTACOES"
+      ? subestacoes.diagnostic
     : ciser.diagnostic.motivoFalha && !chosen
       ? {
           ...ciser.diagnostic,
           motivoFalha:
             `${ciser.diagnostic.motivoFalha}; ${daisa.diagnostic.motivoFalha}; ` +
             `${elecon.diagnostic.motivoFalha}; ${arcelor.diagnostic.motivoFalha}; ` +
-            `${burndy.diagnostic.motivoFalha}`
+            `${burndy.diagnostic.motivoFalha}; ${intelli.diagnostic.motivoFalha}; ` +
+            `${subestacoes.diagnostic.motivoFalha}`
         }
       : ciser.diagnostic;
   if (options.debug) console.log(diagnostic);
@@ -1984,22 +2177,26 @@ function initializeDatabaseSummary() {
     ...DAISA_PRODUCTS,
     ...ELECON_PRODUCTS,
     ...ARCELOR_PRODUCTS,
-    ...BURNDY_PRODUCTS
+    ...BURNDY_PRODUCTS,
+    ...INTELLI_PRODUCTS,
+    ...SUBESTACOES_PRODUCTS
   ];
   const totalVariants =
     catalogVariants.length +
     daisaCatalogVariants.length +
     eleconCatalogVariants.length +
     arcelorCatalogVariants.length +
-    burndyCatalogVariants.length;
+    burndyCatalogVariants.length +
+    intelliCatalogVariants.length +
+    subestacoesCatalogVariants.length;
   const categories = new Set(allProducts.map((product) => product.categoria));
   document.querySelector("#stat-products").textContent = formatNumber(allProducts.length);
   document.querySelector("#stat-variants").textContent = formatNumber(totalVariants);
   document.querySelector("#stat-categories").textContent = categories.size;
   document.querySelector("#database-summary").textContent =
-    `${formatNumber(totalVariants)} códigos em 5 catálogos disponíveis`;
+    `${formatNumber(totalVariants)} códigos em ${MANUFACTURER_ORDER.length} catálogos disponíveis`;
   elements.manualFeedback.textContent =
-    `Informe os dados acima para consultar ${formatNumber(totalVariants)} combinações das cinco bases.`;
+    `Informe os dados acima para consultar ${formatNumber(totalVariants)} combinações das bases técnicas.`;
 }
 
 function activateTab(tabName) {

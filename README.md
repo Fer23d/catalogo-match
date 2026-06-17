@@ -1,7 +1,8 @@
 # Catalogo Match
 
 Aplicativo web local para importar uma planilha Excel, cruzar produtos com os
-catalogos Ciser 2026, DAISA, Elecon, ArcelorMittal e BURNDY e preencher somente
+catalogos Ciser 2026, DAISA, Elecon, ArcelorMittal, BURNDY, Intelli e
+Subestacoes e preencher somente
 a coluna `Observacoes` com o codigo final encontrado.
 
 ## Como usar
@@ -26,6 +27,8 @@ ELECON
 DAISA
 ARCELOR
 BURNDY
+INTELLI
+SUBESTACOES
 ```
 
 Os resultados nunca compartilham linha, referencia ou codigo entre
@@ -125,6 +128,27 @@ Terminal a compressao flexivel 50 mm2 -> YAL50-FLEX-SG1
 Codigo exato YGHC26C2 -> YGHC26C2
 ```
 
+## Busca Intelli
+
+As referencias Intelli foram extraidas das tabelas pesquisaveis do PDF. A busca
+prioriza codigo exato, familia, nome do produto, categoria e dimensoes
+publicadas.
+
+Exemplos reconhecidos:
+
+```text
+Codigo exato IH-312 -> IH-312
+Condutor ICAL CAA/RA ROBIN -> ICAL-1-CAA/RA-ROBIN
+Terminal TM-50 -> TM-50
+```
+
+## Catalogo de Subestacoes
+
+O PDF de Subestacoes foi adicionado ao aplicativo e aparece nos filtros e links
+da interface. Como esse arquivo nao expoe texto pesquisavel pelo extrator local,
+a base interna inclui uma ficha de catalogo para busca por nome/categoria e
+acesso rapido ao PDF.
+
 ## Preservacao do Excel
 
 A exportacao nao cria outra planilha. O aplicativo mantem o arquivo original
@@ -152,16 +176,21 @@ compatibilidade com o fluxo existente.
 - `catalogo-elecon-data.js`: base Elecon extraida;
 - `catalogo-arcelor-data.js`: base ArcelorMittal extraida;
 - `catalogo-burndy-data.js`: base BURNDY extraida;
+- `catalogo-intelli-data.js`: base Intelli extraida;
+- `catalogo-subestacoes-data.js`: base do catalogo de Subestacoes;
 - `catalogo-geral-ciser-2026.pdf`: catalogo Ciser;
 - `catalogo-DAISA.pdf`: catalogo DAISA;
 - `catalogo-elecon.pdf`: catalogo Elecon;
 - `catalogo-arcelor.pdf`: catalogo de perfis ArcelorMittal;
 - `catalogo-burndy.pdf`: catalogo BURNDY;
+- `catalogo-intelli.pdf`: catalogo Intelli;
+- `catalogo-subestacoes.pdf`: catalogo de Subestacoes;
 - `../work/extract_catalog_detailed.mjs`: extrator Ciser;
 - `../work/extract_daisa_catalog.mjs`: extrator DAISA;
 - `../work/extract_elecon_catalog.mjs`: extrator Elecon;
 - `../work/extract_arcelor_catalog.mjs`: extrator ArcelorMittal;
 - `../work/extract_burndy_catalog.mjs`: extrator BURNDY;
+- `../work/extract_intelli_catalog.mjs`: extrator Intelli;
 - `../work/test_match.mjs`: testes automatizados.
 
 ## Bases atuais
@@ -171,6 +200,8 @@ compatibilidade com o fluxo existente.
 - Elecon: 766 referencias extraidas.
 - ArcelorMittal: 4 familias e 215 combinacoes tecnicas.
 - BURNDY: 877 referencias extraidas.
+- Intelli: 1.012 referencias extraidas.
+- Subestacoes: PDF adicionado com ficha local de catalogo.
 
 Todos os dados da planilha sao processados localmente no navegador. Nenhum
 arquivo e enviado para um servidor.

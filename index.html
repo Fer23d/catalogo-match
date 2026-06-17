@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta
     name="description"
-    content="Preenchimento automático da coluna Observações com códigos de cinco catálogos técnicos."
+    content="Preenchimento automático da coluna Observações com códigos de catálogos técnicos."
   >
   <title>Catálogo Match | Cruzamento de Produtos</title>
   <link rel="stylesheet" href="style.css">
@@ -16,6 +16,8 @@
   <script src="catalogo-elecon-data.js" defer></script>
   <script src="catalogo-arcelor-data.js" defer></script>
   <script src="catalogo-burndy-data.js" defer></script>
+  <script src="catalogo-intelli-data.js" defer></script>
+  <script src="catalogo-subestacoes-data.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
@@ -39,7 +41,7 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <span class="eyebrow">Ciser + DAISA + Elecon + ArcelorMittal + BURNDY</span>
+          <span class="eyebrow">Ciser + DAISA + Elecon + ArcelorMittal + BURNDY + Intelli + Subestações</span>
           <h1>Preencha “Observações” com o código correto.</h1>
           <p>
             Importe a planilha de engenharia e cruze descrição, linha, dimensão,
@@ -73,6 +75,12 @@
           </a>
           <a href="catalogo-burndy.pdf" target="_blank" rel="noopener">
             PDF BURNDY <span>↗</span>
+          </a>
+          <a href="catalogo-intelli.pdf" target="_blank" rel="noopener">
+            PDF Intelli <span>↗</span>
+          </a>
+          <a href="catalogo-subestacoes.pdf" target="_blank" rel="noopener">
+            PDF Subestações <span>↗</span>
           </a>
         </div>
       </nav>
@@ -258,10 +266,12 @@
             <label><input type="checkbox" name="manual-manufacturer" value="DAISA" checked> DAISA</label>
             <label><input type="checkbox" name="manual-manufacturer" value="ARCELOR" checked> ARCELOR</label>
             <label><input type="checkbox" name="manual-manufacturer" value="BURNDY" checked> BURNDY</label>
+            <label><input type="checkbox" name="manual-manufacturer" value="INTELLI" checked> INTELLI</label>
+            <label><input type="checkbox" name="manual-manufacturer" value="SUBESTACOES" checked> SUBESTAÇÕES</label>
           </fieldset>
 
           <div class="manual-feedback" id="manual-feedback">
-            Informe os dados acima para pesquisar nas cinco bases técnicas.
+            Informe os dados acima para pesquisar nas bases técnicas.
           </div>
           <div class="manual-results" id="manual-results"></div>
         </section>
@@ -272,7 +282,7 @@
   <footer>
     <div class="container">
       <p><strong>CATÁLOGO MATCH</strong> · Consulta local sem envio de dados.</p>
-      <p>Bases extraídas dos catálogos Ciser, DAISA, Elecon, ArcelorMittal e BURNDY.</p>
+      <p>Bases extraídas dos catálogos Ciser, DAISA, Elecon, ArcelorMittal, BURNDY, Intelli e Subestações.</p>
     </div>
   </footer>
 </body>
