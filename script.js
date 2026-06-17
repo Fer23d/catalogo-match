@@ -10,6 +10,16 @@ const CATALOGS = {
   SUBESTACOES: typeof CATALOGO_SUBESTACOES_PRODUTOS !== "undefined" ? CATALOGO_SUBESTACOES_PRODUTOS : []
 };
 
+const PDF_URL_BY_MANUFACTURER = {
+  CISER: "catalogo-geral-ciser-2026.pdf",
+  ELECON: "catalogo-elecon.pdf",
+  DAISA: "catalogo-DAISA.pdf",
+  ARCELOR: "catalogo-arcelor.pdf",
+  BURNDY: "catalogo-burndy.pdf",
+  INTELLI: "catalogo-intelli.pdf",
+  SUBESTACOES: "catalogo-subestacoes.pdf"
+};
+
 const MANUFACTURERS = Object.keys(CATALOGS);
 const STOP_WORDS = new Set([
   "a", "o", "os", "as", "de", "do", "da", "dos", "das", "e", "em", "para",
@@ -201,6 +211,11 @@ function variantCode(variant) {
   return variant.tag || variant.codigo || variant.codigoFinal || variant.codigoBase || "";
 }
 
+function extractPdfPage(value) {
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : "";
+}
+
 function normalizeCatalogProduct(product, variant, fabricante) {
   const linha = product.linha || variant.familia || "";
   const dimensao = [variant.dimensao, variant.comprimento]
@@ -236,6 +251,8 @@ function normalizeCatalogProduct(product, variant, fabricante) {
     referencia: String(referencia || ""),
     codigoFinal: String(codigoFinal || ""),
     pagina: String(pagina || ""),
+    paginaPdf: extractPdfPage(pagina),
+    pdfUrl: PDF_URL_BY_MANUFACTURER[fabricante] || "",
     detalhe: String(variant.detalhe || ""),
     texto: searchableText,
     textoNormalizado: normalizar(searchableText),
@@ -402,7 +419,37 @@ function confidenceClass(score) {
   return "low";
 }
 
+function abrirCatalogo(produto) {
+  const url = produto.pdfUrl;
+  const pagina = produto.paginaPdf || produto.pagina;
+  const codigo = produto.codigoFinal ? encodeURIComponent(produto.codigoFinal) : "";
+  if (!url) return;
+  const params = [
+    pagina ? `page=${pagina}` : "",
+    codigo ? `search=${codigo}` : ""
+  ].filter(Boolean).join("&");
+  window.open(params ? `${url}#${params}` : url, "_blank", "noopener");
+}
+
+function openCatalogFromButton(button) {
+  const produto = {
+    fabricante: button.dataset.fabricante || "",
+    produto: button.dataset.produto || "",
+    codigoFinal: button.dataset.codigo || "",
+    pagina: button.dataset.pagina || "",
+    paginaPdf: button.dataset.paginaPdf || "",
+    pdfUrl: button.dataset.pdfUrl || ""
+  };
+  abrirCatalogo(produto);
+  if (produto.codigoFinal) {
+    elements.feedback.textContent =
+      `Catálogo aberto em nova aba. Se o PDF não navegar direto até a página, ` +
+      `use a busca do PDF para localizar o código: ${produto.codigoFinal}.`;
+  }
+}
+
 function renderResultCard(result) {
+  const canOpenCatalog = Boolean(result.pdfUrl);
   return `
     <article class="manual-result-card">
       <div class="result-card-heading">
@@ -425,6 +472,18 @@ function renderResultCard(result) {
         linha ${result.breakdown.linha} · acabamento ${result.breakdown.acabamento} ·
         código ${result.breakdown.codigo}
       </p>
+      ${canOpenCatalog
+        ? `<button
+            class="catalog-open-button"
+            type="button"
+            data-fabricante="${escapeHtml(result.fabricante)}"
+            data-produto="${escapeHtml(result.produto)}"
+            data-codigo="${escapeHtml(result.codigoFinal)}"
+            data-pagina="${escapeHtml(result.pagina)}"
+            data-pagina-pdf="${escapeHtml(result.paginaPdf)}"
+            data-pdf-url="${escapeHtml(result.pdfUrl)}"
+          >Abrir no catálogo</button>`
+        : ""}
     </article>
   `;
 }
@@ -508,6 +567,11 @@ elements.examples.forEach((button) => {
     elements.finish.value = "";
     runManualSearch();
   });
+});
+
+elements.results.addEventListener("click", (event) => {
+  const button = event.target.closest(".catalog-open-button");
+  if (button) openCatalogFromButton(button);
 });
 
 initializeSummary();

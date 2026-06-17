@@ -13,6 +13,7 @@ catalogo.
 3. Opcionalmente filtre os fabricantes.
 4. Clique em **Buscar**.
 5. Revise os resultados agrupados por fabricante e ordenados por score.
+6. Use **Abrir no catalogo** para abrir o PDF oficial na pagina do item.
 
 Exemplos de busca:
 
@@ -86,6 +87,21 @@ Cada card de resultado mostra:
 - pagina do catalogo;
 - score de confianca;
 - composicao do score.
+- botao para abrir o PDF do fabricante diretamente na pagina do produto.
+
+## Abertura do catalogo
+
+Cada resultado possui o PDF correto do seu fabricante. O botao **Abrir no
+catalogo** abre uma nova aba usando o formato:
+
+```text
+catalogo-do-fabricante.pdf#page=NUMERO_DA_PAGINA
+```
+
+Quando existe codigo final, o link tambem envia `search=CODIGO` para tentar
+destacar/localizar o produto no leitor de PDF. Se o navegador nao respeitar
+`#page=` ou `search=`, o sistema orienta o usuario a usar a busca interna do
+PDF com o codigo final exibido no card.
 
 ## Arquivos principais
 

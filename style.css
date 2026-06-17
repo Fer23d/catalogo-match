@@ -1088,6 +1088,23 @@ td {
   font-size: 0.68rem;
 }
 
+.catalog-open-button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 13px;
+  border: 1px solid rgba(236, 112, 45, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--orange-600);
+  background: var(--orange-100);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.catalog-open-button:hover {
+  color: var(--white);
+  background: var(--orange-500);
+}
+
 .manual-details {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
