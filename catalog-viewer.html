@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="Visualizador PDF.js com destaque de produto para catálogos técnicos."
+  >
+  <title>Catálogo Match | Visualizador do Catálogo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="catalog-viewer.js"></script>
+</head>
+<body class="viewer-body">
+  <header class="viewer-header">
+    <a class="brand viewer-brand" href="index.html" aria-label="Voltar para o Catálogo Match">
+      <span class="brand-mark">CM</span>
+      <span>
+        <strong>CATÁLOGO MATCH</strong>
+        <small>Viewer PDF.js com destaque</small>
+      </span>
+    </a>
+    <a class="viewer-back-link" href="index.html">Voltar para a busca</a>
+  </header>
+
+  <main class="viewer-shell">
+    <section class="viewer-toolbar" aria-label="Controle do catálogo">
+      <div>
+        <span class="section-kicker">Produto encontrado</span>
+        <h1 id="viewer-title">Carregando catálogo...</h1>
+        <p id="viewer-subtitle">Renderizando a página e procurando o texto do produto.</p>
+      </div>
+      <div class="viewer-actions">
+        <button class="button button-secondary" id="previous-page" type="button">Página anterior</button>
+        <span id="page-indicator">Página -- / --</span>
+        <button class="button button-secondary" id="next-page" type="button">Próxima página</button>
+        <a class="button button-primary" id="open-original-pdf" href="#" target="_blank" rel="noopener">
+          Abrir PDF original
+        </a>
+      </div>
+    </section>
+
+    <div class="viewer-status" id="viewer-status">
+      Carregando PDF.js...
+    </div>
+
+    <section class="pdf-stage" aria-label="Página do catálogo renderizada">
+      <div class="pdf-page-wrap" id="pdf-page-wrap">
+        <canvas id="pdf-canvas"></canvas>
+        <div class="pdf-text-layer" id="text-layer" aria-hidden="true"></div>
+        <div class="highlight-layer" id="highlight-layer" aria-hidden="true"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

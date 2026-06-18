@@ -538,13 +538,28 @@ function confidenceClass(score) {
 function abrirCatalogo(produto) {
   const url = produto.pdfUrl;
   const pagina = produto.paginaPdf || produto.pagina;
-  const codigo = produto.codigoFinal ? encodeURIComponent(produto.codigoFinal) : "";
   if (!url) return;
-  const params = [
-    pagina ? `page=${pagina}` : "",
-    codigo ? `search=${codigo}` : ""
-  ].filter(Boolean).join("&");
-  window.open(params ? `${url}#${params}` : url, "_blank", "noopener");
+  const termoOuReferencia = [
+    produto.codigoFinal,
+    produto.referencia,
+    produto.dimensao,
+    produto.linha,
+    produto.acabamento,
+    produto.produto
+  ].filter(Boolean).join(" | ");
+  const viewerUrl = new URL("catalog-viewer.html", window.location.href);
+  viewerUrl.searchParams.set("pdf", url);
+  if (pagina) viewerUrl.searchParams.set("page", pagina);
+  if (produto.pagina) viewerUrl.searchParams.set("pageLabel", produto.pagina);
+  if (termoOuReferencia) viewerUrl.searchParams.set("term", termoOuReferencia);
+  if (produto.codigoFinal) viewerUrl.searchParams.set("code", produto.codigoFinal);
+  if (produto.referencia) viewerUrl.searchParams.set("reference", produto.referencia);
+  if (produto.dimensao) viewerUrl.searchParams.set("dimension", produto.dimensao);
+  if (produto.linha) viewerUrl.searchParams.set("line", produto.linha);
+  if (produto.acabamento) viewerUrl.searchParams.set("finish", produto.acabamento);
+  if (produto.fabricante) viewerUrl.searchParams.set("manufacturer", produto.fabricante);
+  if (produto.produto) viewerUrl.searchParams.set("product", produto.produto);
+  window.open(viewerUrl.toString(), "_blank", "noopener");
 }
 
 function openCatalogFromButton(button) {
@@ -552,6 +567,10 @@ function openCatalogFromButton(button) {
     fabricante: button.dataset.fabricante || "",
     produto: button.dataset.produto || "",
     codigoFinal: button.dataset.codigo || "",
+    referencia: button.dataset.referencia || "",
+    dimensao: button.dataset.dimensao || "",
+    linha: button.dataset.linha || "",
+    acabamento: button.dataset.acabamento || "",
     pagina: button.dataset.pagina || "",
     paginaPdf: button.dataset.paginaPdf || "",
     pdfUrl: button.dataset.pdfUrl || ""
@@ -559,8 +578,8 @@ function openCatalogFromButton(button) {
   abrirCatalogo(produto);
   if (produto.codigoFinal) {
     elements.feedback.textContent =
-      `Catálogo aberto em nova aba. Se o PDF não navegar direto até a página, ` +
-      `use a busca do PDF para localizar o código: ${produto.codigoFinal}.`;
+      `Viewer do catálogo aberto em nova aba. O sistema vai tentar destacar ` +
+      `o código ${produto.codigoFinal} na página renderizada.`;
   }
 }
 
@@ -658,6 +677,10 @@ function renderResultCard(result) {
             data-fabricante="${escapeHtml(result.fabricante)}"
             data-produto="${escapeHtml(result.produto)}"
             data-codigo="${escapeHtml(result.codigoFinal)}"
+            data-referencia="${escapeHtml(result.referencia)}"
+            data-dimensao="${escapeHtml(result.dimensao)}"
+            data-linha="${escapeHtml(result.linha)}"
+            data-acabamento="${escapeHtml(result.acabamento)}"
             data-pagina="${escapeHtml(result.pagina)}"
             data-pagina-pdf="${escapeHtml(result.paginaPdf)}"
             data-pdf-url="${escapeHtml(result.pdfUrl)}"

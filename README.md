@@ -101,23 +101,32 @@ Cada card de resultado mostra:
 - favoritos persistentes em `localStorage`;
 - copia rapida do codigo final com um clique.
 
-## Abertura do catalogo
+## Abertura e destaque no catalogo
 
 Cada resultado possui o PDF correto do seu fabricante. O botao **Abrir no
-catalogo** abre uma nova aba usando o formato:
+catalogo** abre o `catalog-viewer.html`, um viewer interno baseado em PDF.js.
+Esse viewer:
 
-```text
-catalogo-do-fabricante.pdf#page=NUMERO_DA_PAGINA
-```
+- carrega o PDF correspondente ao fabricante;
+- renderiza a pagina do produto em canvas;
+- extrai a camada de texto posicional com PDF.js;
+- se a pagina logica do catalogo nao for a mesma pagina fisica do arquivo PDF,
+  procura automaticamente a pagina correta pela camada de texto;
+- calcula score por codigo, referencia, descricao e dimensao;
+- desenha retangulo amarelo semi-transparente exatamente sobre os textos
+  encontrados usando as coordenadas do PDF;
+- rola a tela automaticamente ate o destaque.
 
-Quando existe codigo final, o link tambem envia `search=CODIGO` para tentar
-destacar/localizar o produto no leitor de PDF. Se o navegador nao respeitar
-`#page=` ou `search=`, o sistema orienta o usuario a usar a busca interna do
-PDF com o codigo final exibido no card.
+Se o texto nao for encontrado na camada extraida pelo PDF.js, o viewer mostra um
+aviso e mantem o botao para abrir o PDF original.
 
 ## Arquivos principais
 
 - `index.html`: interface de busca manual;
+- `catalog-viewer.html`: viewer PDF.js com destaque de produto;
+- `catalog-viewer.js`: carregamento do PDF, navegacao de pagina e overlay
+  amarelo de destaque;
+- `vendor/pdfjs/`: PDF.js local, sem depender de CDN;
 - `style.css`: layout responsivo;
 - `script.js`: normalizacao, fuzzy search, ranking e renderizacao;
 - `catalogo-data.js`: base Ciser extraida;
