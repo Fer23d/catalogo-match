@@ -1268,15 +1268,18 @@ footer {
 }
 
 footer .container {
-  display: flex;
+  position: relative;
+  min-height: 46px;
+  display: grid;
   align-items: center;
-  flex-direction: column;
-  justify-content: space-between;
+  justify-items: center;
   gap: 10px;
   text-align: center;
 }
 
 footer p {
+  position: absolute;
+  left: 0;
   margin: 0;
   font-size: 0.71rem;
 }
@@ -1289,6 +1292,7 @@ footer strong {
 .site-credit {
   display: grid;
   gap: 4px;
+  justify-items: center;
   text-align: center;
 }
 
@@ -1575,10 +1579,17 @@ footer strong {
   .file-summary,
   .section-heading,
   .results-toolbar,
-  .stage-actions,
-  footer .container {
+  .stage-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  footer .container {
+    min-height: auto;
+  }
+
+  footer p {
+    position: static;
   }
 
   .mapping-grid,
