@@ -1283,6 +1283,25 @@ footer strong {
   letter-spacing: 0.08em;
 }
 
+.site-credit {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.site-credit strong {
+  color: var(--white);
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.site-credit span {
+  color: var(--steel-400);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .viewer-body {
   min-height: 100vh;
   background: #dce4e8;
@@ -1557,6 +1576,10 @@ footer strong {
   footer .container {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .site-credit {
+    text-align: left;
   }
 
   .mapping-grid,
