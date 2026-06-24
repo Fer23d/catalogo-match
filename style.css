@@ -1269,8 +1269,11 @@ footer {
 
 footer .container {
   display: flex;
+  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
+  gap: 10px;
+  text-align: center;
 }
 
 footer p {
@@ -1286,7 +1289,7 @@ footer strong {
 .site-credit {
   display: grid;
   gap: 4px;
-  text-align: right;
+  text-align: center;
 }
 
 .site-credit strong {
@@ -1576,10 +1579,6 @@ footer strong {
   footer .container {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .site-credit {
-    text-align: left;
   }
 
   .mapping-grid,
