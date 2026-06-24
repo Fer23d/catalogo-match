@@ -1268,20 +1268,14 @@ footer {
 }
 
 footer .container {
-  position: relative;
-  min-height: 46px;
-  display: grid;
+  display: flex;
   align-items: center;
-  justify-items: center;
-  gap: 10px;
+  justify-content: center;
   text-align: center;
 }
 
-footer p {
-  position: absolute;
-  left: 0;
-  margin: 0;
-  font-size: 0.71rem;
+.footer-credit-container {
+  min-height: 56px;
 }
 
 footer strong {
@@ -1586,10 +1580,6 @@ footer strong {
 
   footer .container {
     min-height: auto;
-  }
-
-  footer p {
-    position: static;
   }
 
   .mapping-grid,
